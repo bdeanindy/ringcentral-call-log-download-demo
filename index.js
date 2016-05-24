@@ -4,6 +4,7 @@
 require('dotenv').config(); // If using this in multi-environment (local and deployed versions) might want to add logic for checking NODE_ENV environment variable to load only if local
 var RC = require('ringcentral');
 var Helpers = require('ringcentral-helpers');
+var fs = require('fs');
 var http = require('http');
 var json2csv = require('json2csv');
 
@@ -43,17 +44,22 @@ function init() {
     var callLogs = [];
     var page = 1;
 
+    // Since Call Log falls into the "Heavy" Usage Plan for Basic applications
+    // this will receive an HTTP 429 error if it exceeds 10 requests in 60 seconds
+    // TODO: Add improvement to handle this situation properly
     function getCallLogsPage() {
-
         return platform
             .get('/account/~/call-log', {
                 page: page,
-                perPage: process.env.LOGS_PER_PAGE //REDUCE NUMBER TO SPEED BOOTSTRAPPING
+                perPage: process.env.LOGS_PER_PAGE, // MAX is 1000
+                dateFrom: process.env.DATE_FROM,
+                dateTo: process.env.DATE_TO,
+                view: process.env.VIEW
             })
             .then(function (response) {
-                //console.log("The logs response contained:", JSON.stringify(response.json(), null, 2));
+                console.log("The call logs response contained:", JSON.stringify(response.json(), null, 2));
                 var data = response.json();
-                //console.log("************** THE NUMBER OF EXTENSIONS ARE : ***************", data.records.length);
+                console.log("************** THE NUMBER OF CALL LOGS THIS REQUEST CYCLE ARE : ***************", data.records.length);
                 callLogs = callLogs.concat(data.records);
                 if (data.navigation.nextPage) {
                     page++;
@@ -62,7 +68,6 @@ function init() {
                     return callLogs; // this is the finally resolved thing
                 }
             });
-
     }
 
     /*
@@ -70,7 +75,9 @@ function init() {
      */
     return getCallLogsPage()
         .then(convertToCSV)
-        .then(writeCSV)
+        .then(function(csvString) {
+            writeCSV(csvString);
+        })
         .catch(function (e) {
             console.error(e);
             throw e;
@@ -79,32 +86,40 @@ function init() {
 }
 
 function convertToCSV(callLogs) {
-    //console.log("********* CREATING EVENT FILTERS ***************");
-    json2csv({ data: callLogs, fields: fieldsOut}, function(err, csv) {
-        if(err) {
-            throw err;
-        } else {
-            return csv;
-        }
+    console.log("********* CONVERTING TO CSV ***************");
+    return new Promise(function(resolve, reject) {
+        // Need to use the right headers depending upon the view
+        json2csv({ data: callLogs}, function(err, csv) {
+            if(err) {
+                console.error(err);
+                reject(err);
+            } else {
+                console.log( 'CSV DATA FROM JSON2CSV');
+                console.log(csv);
+                resolve(csv);
+            }
+        });
     });
 }
 
-function generatePresenceEventFilter(item) {
-    //console.log("The item is :", item);
-    if (!item) {
-        ;
-        throw new Error('Message-Dispatcher Error: generatePresenceEventFilter requires a parameter');
-    } else {
-        //console.log("The Presence Filter added for the extension :" + item.extension.id + ' : /account/~/extension/' + item.extension.id + '/presence?detailedTelephonyState=true');
-        return '/account/~/extension/' + item.id + '/presence?detailedTelephonyState=true';
-    }
-}
+function writeCSV(csvData) {
+    console.log("********* WRITING CSV ***************");
+    return new Promise(function(resolve, reject) {
+        console.log(csvData);
+        var nowStr = +new Date(); // Seconds since Epoch (Unix timestamp)
+        var filename = process.env.OUTPUT_FILE_PREFIX + '--' + nowStr + '.csv';
 
-function startSubscription(eventFilters) { //FIXME MAJOR Use devices list somehow
-    //console.log("********* STARTING TO CREATE SUBSCRIPTION ON ALL FILTERED DEVICES ***************");
-    return subscription
-        .setEventFilters(eventFilters)
-        .register();
+        // Write the file to disc
+        fs.writeFile('./' + filename, csvData, function(err, data) {
+            if (err) {
+                console.error(err);
+                reject(err);
+            } else {
+                console.log('The file: ' + filename + ' has been written');
+                resolve(data);
+            }
+        });
+    });
 }
 
 // Register Platform Event Listeners
