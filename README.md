@@ -17,6 +17,12 @@ This is only a demo application to show how to use Call Logs API resource  prope
 1. Clone `git clone https://github.com/bdeanindy/ringcentral-call-log-download-demo.git` this repository and `cd ringcentral-call-log-download-demo` into the project directory
 2. Install the dependencies `npm install`
 3. Configure your environment `cp .env.tmpl .env`
+    * CACHE_PREFIX is optional
+    * RC_EXTENSION is optional (if you are using the 101 Extension)
+    * VIEW can be either `Simple` or `Detailed`
+    * DATE_FROM and DATE_TO must both be an ISO8601 formatted Date which includes: date, time, timezone offset (Ex: YYYY-MM-DDTHH:MM:SS.000Z where 000Z = hours offset from Zulu time)
+    * LOGS_PER_PAGE must be an integer not to exceed 1000 (max records per page for Call Log API resource)
+    * OUTPUT_FILE_PREFIX can be any string you would like, and will be the name of the output CSV file + `---` +  unixTimeStamp + `.csv`
 4. Create an application in [RingCentral Developer Portal](https://developers.ringcentral.com/my-account.html#/create-app) with the following parameters:
     * Platform Type: Server-only (No UI)
     * Application Type: Private
