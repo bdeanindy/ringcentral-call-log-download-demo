@@ -28,9 +28,9 @@ This is only a demo application to show how to use Call Logs API resource  prope
 ## Operation
 
 1. To start the application, `npm start`
-2. When you see ".csv of call logs created successfully", the application is complete and you should see a new file in the root of this project directory named as today's date and containing your call log data.
+2. When you see "The file: myRingCentralCallLogs---{{timestamp}}.csv has been written", the application is complete and you should see a new file in the root of this project directory named as today's date and containing your call log data.
 
 ## Troubleshooting
 
-1. Not seeing ...?
+1. Not seeing your CSV? Inspect the paging property of the request and see if you have more than 10K call logs (this can cause your application to be throttled)
 3. Anything else...add an issue and I will respond as soon as I am able
